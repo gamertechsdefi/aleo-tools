@@ -43,17 +43,17 @@ async function removeBackground(fileBuffer: Buffer): Promise<Buffer> {
     {
       name: "WithoutBG",
       url: "https://api.withoutbg.com/v1.0/image-without-background-base64",
-      headers: { 
-        ...getHeaders(process.env.WITHOUTBG_API_KEY), 
-        "Content-Type": "application/json" 
+      headers: {
+        ...getHeaders(process.env.WITHOUTBG_API_KEY),
+        "Content-Type": "application/json"
       },
-      
+
       formData: async (buffer: Buffer) => {
         if (!buffer || buffer.length === 0) throw new Error("Invalid buffer for WithoutBG API");
         const image = await Jimp.read(buffer);
         const base64 = await image.getBase64Async(Jimp.MIME_PNG);
-        return JSON.stringify({ 
-          image_base64: base64.replace(/^data:image\/png;base64,/, "") 
+        return JSON.stringify({
+          image_base64: base64.replace(/^data:image\/png;base64,/, "")
         });
       },
       isJson: true,
@@ -107,7 +107,9 @@ async function removeBackground(fileBuffer: Buffer): Promise<Buffer> {
       });
 
       if (!response.ok) throw new Error(`${api.name} API failed: ${response.statusText}`);
-      const data = await response.buffer(); // Get raw buffer directly
+      const data = api.isJson
+        ? await response.json() // JSON responses like WithoutBG
+        : await response.buffer(); // Image buffer responses like Remove.bg, PhotoRoom
       const processedBuffer = api.processResponse ? api.processResponse(data) : data;
 
       if (!processedBuffer || processedBuffer.length === 0) {
@@ -165,9 +167,9 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Image processing failed:", error);
     return NextResponse.json(
-      { 
-        error: "Image processing failed", 
-        details: error instanceof Error ? error.message : String(error) 
+      {
+        error: "Image processing failed",
+        details: error instanceof Error ? error.message : String(error)
       },
       { status: 500 }
     );
